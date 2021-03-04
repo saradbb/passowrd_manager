@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import messagebox
 import random
+import json
 
 
 #---------------------------    Password Generation   -------------------------
@@ -41,7 +42,7 @@ def pw_generate():
 
 
 
-#-------------------------------  Data Validation and Password Saving to the File ----------
+#-------------------------------  Data Validation, Password Storage and Search ----------------------
 
 def validate(w,e):
     """
@@ -50,7 +51,7 @@ def validate(w,e):
     :param e:   Email
     :return:  True if both email and website correct. False otherwise.
     """
-    if len(w) < 6 or (".com" in w == False):
+    if len(w) < 3 or (".com" in w == False):
         return False
     if len(e) < 10 or ("@" in e == False) or (".com" in e == False):
         return False
@@ -67,18 +68,61 @@ def save_password():
     email = email_text.get()
     password = password_text.get()
     is_ok = False
+    data = {
+        website : {
+            "email" : email,
+            "password" : password
+            }
+    }
+
+
     if validate(website, email):       #If the data is valid get user confirmation
         is_ok = messagebox.askokcancel(title = "Confirm",message = f"These are the values entered: \nWebsite:{website}\nEmail:{email}\nPassword: {password}")
     else:
         messagebox.showinfo("Oops!","Invalid info for website or email")
     if is_ok:     #If valid and user confirmed
-        save_file = open("pw.txt","a")
-        save_file.write(f"{website} | {email} | {password}\n")
-        website_text.delete(0,END)
-        website_text.insert(0,"")
-        password_text.delete(0,END)
-        password_text.insert(0,"")
-        website_text.focus()
+        val = {}
+        try:
+            save_file = open("data.json","r")
+            val = json.load(save_file)
+            save_file.close()
+        except json.decoder.JSONDecodeError:
+            pass
+        except FileNotFoundError:
+            pass
+        finally:
+            save_file = open("data.json","w")
+            val.update(data)
+            json.dump(val,save_file, indent=4)
+            website_text.delete(0,END)
+            website_text.insert(0,"")
+            password_text.delete(0,END)
+            password_text.insert(0,"")
+            website_text.focus()
+        #save_file.close()
+
+
+
+def search():
+    """
+    This function searches and displays the password for the site entered by the user
+    :return:
+    """
+    website = website_text.get()
+    try:
+        with open("data.json","r") as file:
+            data = json.load(file)
+            email = data[website]["email"]
+            password = data[website]["password"]
+    except FileNotFoundError:
+        messagebox.showerror("Oops!", "There are no records!")
+    except KeyError:
+        messagebox.showerror("Oops!",f"No record for {website} exist")
+    else:
+        messagebox.showinfo(f"{website}",f"Email: {email}\nPassword: {password}")
+
+
+
 
 
 #----------------------    UI SETUP   ---------------------
@@ -115,32 +159,12 @@ email_text.grid(column = 1,row = 2)
 password_text.grid(column = 1, row = 3)
 
 #Setup Buttons
-generate_password = Button(text = "Generate Password",command= pw_generate)
+generate_password = Button(text = "Generate Password",width = 15,command= pw_generate)
 generate_password.grid(column = 2, row = 3)
 add = Button(text = "Add",width = 25,command = save_password)
 add.grid(column = 1, row = 4)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+search = Button(text = "Search",width = 15,command = search)
+search.grid(column = 2,row = 1)
 
 
 window.mainloop()
